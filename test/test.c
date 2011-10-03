@@ -127,3 +127,38 @@
 {% loop %}
     Back to loop {{ v }}
 {% end %}
+
+//Teste 18
+{% for i=1,3 %}
+    --{{i}}
+    {% for j=4,6 %}
+        {{i}},{{j}}
+        {% for c,v in pairs{'a','b'} %}
+            {{v}}
+        {% end %}
+    {% end %}
+{% end %}
+
+{% for i=1,10 %}
+    {{i}}--{% cycle 'a','b',i as teste %},
+    --{{teste}}--
+{% end %}
+
+//Teste 19
+{% for c,v in ipairs{'a','a','b','b','c'} %}
+    {% ifchanged v %}
+        --> {{ v }}
+    {% else %}
+        repeat: {{ v }}
+    {% end %}
+{% end %}
+
+//Teste 20
+{% include 'extend.c' %}
+
+//Teste 21
+{% with x = 33, z=42 %}
+    {% for i=0,10 %}
+        {{x * i}}--{{z+i}}
+    {% end %}
+{% end %}

@@ -18,7 +18,12 @@ local Sp = V'IGNORED'^1
 local Grammar = {
     "Start", -- initial
     Start    = Ct( ( V'Literal' + V'Tag' )^ 0 ),
-    Tag      = Ct( V'Comment' + (V'BlockTag' * P'\n') + V'BlockTag' + V'ExprTag' ),
+    Tag      = Ct(
+        V'Comment' +
+        (S' '^0 * V'BlockTag' * S' '^0 * S'\n') +
+        V'BlockTag' +
+        V'ExprTag'
+    ),
     Literal  = C( ( 1 - V'Tag' )^1 ),
     Comment  = P'{#' * ( 1 - P'#}' )^0 * P'#}',
     BlockTag = P'{%' * SS * Cg (V'Ident', 'block' ) *

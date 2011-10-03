@@ -8,7 +8,8 @@ function Context.new()
     local self = {}
     setmetatable( self, Context )
 
-    self.ctxs = {}
+    self.ctxs      = {}
+    self.ctxs_type = {}
     self:push{
         table    = table,
         string   = string,
@@ -23,15 +24,17 @@ function Context.new()
     return self
 end
 
-function Context:push( t )
+function Context:push( t, name )
     if type( t ) == 'table' then
-        self.ctxs[ #self.ctxs + 1 ] = t
+        self.ctxs[ #self.ctxs + 1 ]       = t
+        self.ctxs_type[ #self.ctxs_type + 1 ] = name or '?'
     end
 end
 
 function Context:pop()
     if #self.ctxs > 0 then
-        self.ctxs[ #self.ctxs ] = nil
+        self.ctxs[ #self.ctxs ]           = nil
+        self.ctxs_type[ #self.ctxs_type ] = nil
     end
 end
 
@@ -40,6 +43,19 @@ function Context:get( k )
         local v = self.ctxs[ i ][ k ]
         if v ~= nil then
             return v
+        end
+    end
+end
+
+function Context:set( k, v )
+    local ctx = self.ctxs[ #self.ctxs ]
+    ctx[ k ] = v
+end
+
+function Context:get_ctx( k )
+    for i = #self.ctxs, 1, -1 do
+        if self.ctxs_type[ i ] == k then
+            return self.ctxs[ i ]
         end
     end
 end

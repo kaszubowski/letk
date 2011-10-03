@@ -11,25 +11,34 @@ function Template.new( file )
 
     setmetatable( self, Template )
 
-    self.file = file
+    self.file   = file
+    self.blocks = {}
 
     return self
 end
 
 function Template:__call( Context )
     if not Context then print('ERRO: no Context') return false end
+
+    if not self.chunks then
+        self:compile( Context )
+    end
+
+    local list = self:parse()
+
+    return self:execute( list )
+end
+
+function Template:compile( Context )
     local f = io.open( self.file, 'r' )
     if not f then print('ERRO: file not found') return false end
 
-    local s       = f:read("*a")
-
     self.context  = Context
+
+    local s       = f:read("*a")
 
     self.chunks   = Grammar:match( s )
     self.chunk_id = 1
-    local list    = self:parse()
-
-    return self:execute( list )
 end
 
 function Template:parse( fl )

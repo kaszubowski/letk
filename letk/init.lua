@@ -1,5 +1,5 @@
-require 'letk.string'
 require 'letk.table'
+require 'letk.string'
 letk           = {}
 letk.Class     = require'letk.class'
 letk.List      = require'letk.list'

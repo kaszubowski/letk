@@ -34,7 +34,7 @@ local function block_print( template, chunk )
     local eval = loadstring( 'return ' .. chunk[ 1 ] )
 
     return function( )
-        local res =  self.context:eval( eval )
+        local res =  template.context:eval( eval )
         return res
     end
 end
@@ -47,7 +47,7 @@ local function block_var( template, chunk )
     local eval = loadstring( 'return ' .. chunk.var )
 
     return function( )
-        local res =  self.context:eval( eval )
+        local res =  template.context:eval( eval )
         return res
     end
 end
@@ -102,11 +102,11 @@ local function block_for( template, chunk )
 
     return function( )
         local for_ctx, result = {}, {}
-        self.context:push( for_ctx )
+        template.context:push( for_ctx, 'FOR' )
 
         local run             = false
         if mode == 'numeric' then
-            local a,b,c = self.context:eval( eval )
+            local a,b,c = template.context:eval( eval )
             for i = a, b, c or 1 do
                 run = true
                 for_ctx[ arglist ] = i
@@ -121,7 +121,7 @@ local function block_for( template, chunk )
                 end
             end
         elseif mode == 'generic' then
-            local iter, tbl, var  = self.context:eval( eval )
+            local iter, tbl, var  = template.context:eval( eval )
             while true do
                 local values = { iter( tbl, var ) }
                 var = values[ 1 ]
@@ -153,16 +153,135 @@ local function block_for( template, chunk )
             end
         end
 
-        self.context:pop()
+        template.context:pop()
 
         return table.concat( result )
     end
 end
 
+local function block_cycle( template, chunk )
+    local external_key
+    local explist = string.gsub( chunk[ 1 ], '%s+as%s+([%w_]+)%s*$', function( t )
+        external_key = t
+        return ''
+    end )
+
+    local itens = loadstring( 'return ' .. explist )
+
+    local iter
+    local values
+    return function( template, context )
+        if values == nil then
+            values = { context:eval( itens ) }
+            iter = 0
+        end
+
+        iter = ( iter % #values ) + 1
+        local value = values[ iter ]
+
+        if external_key then
+            local for_ctx = template.context:get_ctx('FOR')
+            if for_ctx then
+                for_ctx[ external_key ] = value
+            end
+        end
+
+        return value
+    end
+end
+
+local function block_if_changed( template, chunk )
+    local eval = loadstring( 'return ' .. chunk[ 1 ] )
+    local tlist, end_chunk = template:parse{ 'else', 'end' }
+    local flist
+    if end_chunk.block == 'else' then
+        flist = template:parse{ 'end' }
+    end
+    local last_value
+    return function()
+        local new_value = template.context:eval( eval )
+        if new_value ~= last_value then
+            last_value = new_value
+            return template:execute( tlist )
+        elseif flist then
+            return template:execute( flist )
+        end
+    end
+end
+
+local function block_block( template, chunk )
+    local name = string.match( chunk[ 1 ], '^%s*([%w_-]+)%s*$' )
+    local list = template:parse{ 'end', 'endblock' }
+
+    template.blocks[ name ] = list
+
+    return function( )
+        return template:execute( template.blocks[ name ] )
+    end
+end
+
+local function block_extends( template, chunk )
+    local block_file_name = chunk[ 1 ]
+    local fn_file_name    = loadstring( 'return ' .. block_file_name)
+
+    local list_ignored = template:parse()
+
+    return function( )
+        local template_name = template.context:eval( fn_file_name )
+        local new_template  = template.new( template_name )
+        new_template:compile( template.context )
+        local list          = new_template:parse()
+        for k, blk in pairs( template.blocks ) do
+            new_template.blocks[ k ] = blk
+        end
+        return template:execute( list )
+    end
+end
+
+local function block_include( template, chunk )
+    local eval = chunk[1]
+    local file, with = eval:match( '^(.-)%s+with%s+(.+)%s*$' )
+    if file and with then
+        if with:match( '%S' ) then
+            eval = file .. ', {' .. with .. '}'
+        end
+    end
+    local f = loadstring( 'return ' .. eval )
+    return function( )
+        local template_name, ctx = template.context:eval( f )
+        local new_template = template.new( template_name )
+        if type( ctx ) ~= 'table' then
+            ctx = {}
+        end
+        template.context:push( ctx )
+        local result = new_template( template.context )
+        template.context:pop()
+        return result
+    end
+end
+
+local function block_with( template, chunk )
+    local with = loadstring( 'return {' .. chunk[ 1 ] .. '}' )
+    local list = template:parse{ 'end', 'endwith' }
+    return function(  )
+        local ctx = template.context:eval( with )
+        template.context:push( ctx )
+        local result = template:execute( list )
+        template.context:pop( )
+        return result
+    end
+end
+
 return {
-    [ 'if' ]     = block_if,
-    [ 'elseif' ] = block_if,
-    [ 'print' ]  = block_print,
-    [ 'var' ]    = block_var,
-    [ 'for' ]    = block_for,
+    [ 'if' ]          = block_if,
+    [ 'elseif' ]      = block_if,
+    [ 'print' ]       = block_print,
+    [ 'var' ]         = block_var,
+    [ 'for' ]         = block_for,
+    [ 'cycle' ]       = block_cycle,
+    [ 'ifchanged' ]   = block_if_changed,
+    [ 'block' ]       = block_block,
+    [ 'extends' ]     = block_extends,
+    [ 'include' ]     = block_include,
+    [ 'with' ]        = block_with,
 }
