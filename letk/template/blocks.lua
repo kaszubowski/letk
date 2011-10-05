@@ -55,7 +55,7 @@ end
 local function block_for( template, chunk )
     --* blocks list *--
     local lists      = {}
-    local delimiters = { 'first', 'last', 'empty', 'loop', 'endfor', 'end' }
+    local delimiters = { 'first', 'last', 'empty', 'loop', 'endfor', 'end', 'notlast', 'notfirst' }
 
     local list, end_chunk
     local last_end_chunk = 'loop'
@@ -113,8 +113,10 @@ local function block_for( template, chunk )
                 for _, lst in ipairs( lists ) do
                     if
                         lst[1] == 'loop' or
-                        ( i == a               and lst[1] == 'first' ) or
-                        ( i > ( b - (c or 1) ) and lst[1] == 'last'  )
+                        ( i == a                and lst[1] == 'first' ) or
+                        ( i ~= a                and lst[1] == 'notfirst' ) or
+                        ( i > ( b - (c or 1) )  and lst[1] == 'last'  ) or
+                        ( i <= ( b - (c or 1) ) and lst[1] == 'notlast'  )
                     then
                         result[#result +1] = template:execute( lst[2] )
                     end
@@ -122,13 +124,13 @@ local function block_for( template, chunk )
             end
         elseif mode == 'generic' then
             local iter, tbl, var  = template.context:eval( eval )
-            while true do
-                local values = { iter( tbl, var ) }
-                var = values[ 1 ]
-                if var == nil then
-                    break
-                end
-                local islast = not iter( tbl, var )
+            local values = { iter( tbl, var ) }
+            var = values[ 1 ]
+            while var do
+                local next_values = { iter( tbl, var ) }
+                local next_var    = next_values[1]
+                local islast      = next_var == nil
+
                 for i, arg in ipairs( arglist ) do
                     for_ctx[ arg ] = values[ i ]
                 end
@@ -137,11 +139,16 @@ local function block_for( template, chunk )
                     if
                         (lst[1] == 'loop') or
                         ( not run        and lst[1] == 'first' ) or
-                        ( islast         and lst[1] == 'last'  )
+                        ( run            and lst[1] == 'notfirst' ) or
+                        ( islast         and lst[1] == 'last'  ) or
+                        ( not islast     and lst[1] == 'notlast'  )
                     then
                         result[#result +1] = template:execute( lst[2] )
                     end
                 end
+
+                values = next_values
+                var    = next_var
                 run = true
             end
         end
@@ -265,10 +272,17 @@ local function block_with( template, chunk )
     local list = template:parse{ 'end', 'endwith' }
     return function(  )
         local ctx = template.context:eval( with )
-        template.context:push( ctx )
+        template.context:push( ctx, 'WITH' )
         local result = template:execute( list )
         template.context:pop( )
         return result
+    end
+end
+
+local function block_set( template, chunk )
+    local f = loadstring( chunk[ 1 ] )
+    return function(  )
+        template.context:update( f )
     end
 end
 
@@ -284,4 +298,5 @@ return {
     [ 'extends' ]     = block_extends,
     [ 'include' ]     = block_include,
     [ 'with' ]        = block_with,
+    [ 'set' ]         = block_set,
 }

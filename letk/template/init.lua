@@ -71,7 +71,7 @@ function Template:parse( fl )
         if chunk.block then
             local block = Blocks[ chunk.block ]
             if not block then
-                print( "Erro, invalid block:", chunk.block )
+                print( "Erro, invalid block:", chunk.block, chunk[1] )
             else
                 local fn = block( self, chunk )
                 if fn then

@@ -47,18 +47,38 @@ function Context:get( k )
     end
 end
 
-function Context:set( k, v )
+function Context:set( k, v, ctx_type )
     local ctx = self.ctxs[ #self.ctxs ]
-    ctx[ k ] = v
+    ctx[ k ]  = v
 end
 
-function Context:get_ctx( k )
+function Context:get_ctx( ctx_type )
     for i = #self.ctxs, 1, -1 do
-        if self.ctxs_type[ i ] == k then
+        if self.ctxs_type[ i ] == ctx_type then
             return self.ctxs[ i ]
         end
     end
 end
+
+function Context:update( f )
+        local env = setmetatable( {}, {
+            __index    = function( _, k ) return self:get( k )  end,
+            __newindex = function( _, k, v )
+                for i = #self.ctxs, 1, -1 do
+                    if self.ctxs[ i ][ k ] then
+                        self.ctxs[ i ][ k ] = v
+                        return
+                    end
+                end
+                self.ctxs[ #self.ctxs ][ k ] = v
+            end,
+        } )
+        local old_env = getfenv( f )
+        setfenv( f, env )
+        f()
+        setfenv( f, old_env )
+end
+
 
 function Context:get_env()
     local env = setmetatable( {}, {
