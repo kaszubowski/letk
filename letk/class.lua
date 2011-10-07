@@ -14,7 +14,9 @@ local Class = function( init, ... )
         local self = {}
         setmetatable( self, c )
         if type( init ) == 'function' then
-            init( self, ... )
+            local results = { init( self, ... ) }
+            results[ 1 ] = results[ 1 ] or self
+            return unpack( results )
         end
         return self
     end
