@@ -10,6 +10,10 @@ local Class = function( init, ... )
     end
     setmetatable(c, c)
 
+    if type( init ) == 'function' then
+        c.__super = init
+    end
+
     function c.new( ... )
         local self = {}
         setmetatable( self, c )
