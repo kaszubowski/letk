@@ -23,6 +23,7 @@
 
 local List    = letk.Class( function( self )
     self.root  = nil
+    self.tail  = nil
     self.itens = 0
 end )
 
@@ -61,26 +62,37 @@ function List:add( data, pos )
         data = data,
     }
 
-    local p_prev  = nil
-    local p_atual = self.root
-    --local p_next  = nil
-
-    while ipos > 1 and p_atual do
-        ipos = ipos - 1
-        p_prev   = p_atual
-        p_atual  = p_atual.next
-    end
-
-    if p_atual and p_prev then
-        node.next    = p_atual
-        p_prev.next  = node
-    elseif p_atual then
-        node.next    = p_atual
-        self.root    = node
-    elseif p_prev then
-        p_prev.next = node
+    if ipos > self.itens then
+        if self.tail then
+            self.tail.next = node
+        end
+        if not self.root then
+            self.root = node
+        end
+        self.tail      = node
     else
-        self.root = node
+        local p_prev  = nil
+        local p_atual = self.root
+
+        while ipos > 1 and p_atual do
+            ipos = ipos - 1
+            p_prev   = p_atual
+            p_atual  = p_atual.next
+        end
+
+        if p_atual and p_prev then
+            node.next    = p_atual
+            node.prev    = p_prev
+            p_prev.next  = node
+        elseif p_atual then
+            node.next    = p_atual
+            self.root    = node
+        elseif p_prev then
+            p_prev.next = node
+            node.prev   = p_prev
+        else
+            self.root = node
+        end
     end
 
     self.itens = self.itens + 1
@@ -91,6 +103,10 @@ function List:get( pos )
 
     if not gpos then
         return
+    end
+
+    if gpos == self.itens then
+        return self.tail.data
     end
 
     local p_atual = self.root
@@ -110,6 +126,18 @@ function List:remove( pos )
     local gpos, ipos = self:normalize_position( pos )
     if not gpos then
         return
+    end
+
+    if gpos == self.itens then
+        local node = self.tail
+        self.tail  = node.prev
+        if self.tail then
+            self.tail.next = nil
+        else
+            self.root = nil
+        end
+        self.itens = self.itens - 1
+        return node.data
     end
 
     local p_prev  = nil
@@ -149,10 +177,7 @@ end
 function List:ipairs()
     local node
     local iter = function( list, last_pos )
-        local pos  = last_pos and last_pos + 1 or 1
-        --~ if pos > self.itens then return end
-        --~ local data = list:get( pos )
-        --~ return pos, data
+        local pos  = last_pos + 1
         if pos == 1 then
             node = self.root
         else
@@ -161,7 +186,7 @@ function List:ipairs()
         if not node then return end
         return  pos, node.data
     end
-    return iter, self, nil
+    return iter, self, 0
 end
 
 function List:find( arg, force_data )
