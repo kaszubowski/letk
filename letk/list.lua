@@ -64,6 +64,7 @@ function List:add( data, pos )
 
     if ipos > self.itens then
         if self.tail then
+            node.prev      = self.tail
             self.tail.next = node
         end
         if not self.root then
@@ -145,7 +146,7 @@ function List:remove( pos )
     local p_next  = self.root
 
     while gpos > 0 and p_next do
-        gpos = gpos - 1
+        gpos    = gpos - 1
         p_prev  = p_atual
         p_atual = p_next
         p_next  = p_next.next
@@ -155,7 +156,13 @@ function List:remove( pos )
         if p_prev then
             p_prev.next = p_next
         else
-            self.root = p_next
+            self.root   = p_next
+        end
+
+        if p_next then
+            p_next.prev = p_prev
+        else --yeah, it will never happen
+            self.tail   = p_prev
         end
 
         self.itens = self.itens - 1
