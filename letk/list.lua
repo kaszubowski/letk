@@ -124,26 +124,38 @@ function List:get( pos )
 end
 
 function List:remove( pos )
-    local gpos, ipos = self:normalize_position( pos )
-    if not gpos then
-        return
-    end
-
-    if gpos == self.itens then
-        local node = self.tail
-        self.tail  = node.prev
-        if self.tail then
-            self.tail.next = nil
-        else
-            self.root = nil
-        end
-        self.itens = self.itens - 1
-        return node.data
-    end
+    local gpos, ipos
+    local type_pos = type( pos )
 
     local p_prev  = nil
     local p_atual = nil
     local p_next  = self.root
+
+    if type_pos == 'number' then
+        gpos, ipos = self:normalize_position( pos )
+        if not gpos then
+            return
+        end
+
+        if gpos == self.itens then
+            local node = self.tail
+            self.tail  = node.prev
+            if self.tail then
+                self.tail.next = nil
+            else
+                self.root = nil
+            end
+            self.itens = self.itens - 1
+            return node.data
+        end
+    elseif type_pos == 'table' then
+        p_atual = pos
+        p_prev  = pos.prev
+        p_next  = pos.next
+        gpos    = 0
+    else
+        return
+    end
 
     while gpos > 0 and p_next do
         gpos    = gpos - 1
@@ -170,7 +182,21 @@ function List:remove( pos )
     end
 end
 
---Todo
+function List:iremove( fn )
+    local node      = self.root
+    local result, i = {}, 1
+    while node do
+        if fn( node.data ) then
+            self:remove( node )
+            result[ i ] = node.data
+            i           = i + 1
+        end
+        node = node.next
+    end
+
+    return result
+end
+
 function List:append( data )
     self:add( data, 0) --last position
     return self.itens
