@@ -255,4 +255,10 @@ function List:len()
     return self.itens
 end
 
+function List:clear()
+    self.itens = 0
+    self.root  = nil
+    self.tail  = nil
+end
+
 return List
