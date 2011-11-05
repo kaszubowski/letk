@@ -8,7 +8,7 @@ function simpleio.sprintf( ... )
     return string.format( ... )
 end
 
-local scan_patters = {
+local scan_patterns = {
     ['s'] = { '(.+)'        ,          },
     ['i'] = { '(%d+)'       , tonumber },
     ['f'] = { '(%d*%.?%d*)' , tonumber },
@@ -21,7 +21,7 @@ function simpleio.scanf( frm )
     local pattern       = frm:gsub('[%(%)%.%+%-%*%?%[%]%^%$]', function( n )
         return '%' .. n
     end):gsub('%%([%a]*)', function( n )
-        local sp = scan_patters[ n ]
+        local sp = scan_patterns[ n ]
         if sp then
             num_patterns                = num_patterns + 1
             pos_processor[num_patterns] = sp[ 2 ]
