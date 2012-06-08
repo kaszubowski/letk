@@ -4,8 +4,6 @@ local Blocks  = require 'letk.template.blocks'
 local Template = {}
 Template.__index = Template
 
-setmetatable( Template, Object )
-
 function Template.new( file )
     self = {}
 
@@ -19,6 +17,8 @@ end
 
 function Template:__call( Context )
     if not Context then print('ERRO: no Context') return false end
+    
+    self.errors = {}
 
     if not self.chunks then
         self:compile( Context )
@@ -98,7 +98,13 @@ function Template:execute( list )
         end
         result[ i ] = tostring( val or '' )
     end
-    return table.concat( result, '' )
+    if #self.errors == 0 then
+        return table.concat( result, '' )
+    else
+        local err = table.concat( self.errors, '\n' )
+        print( err )
+        return err
+    end
 end
 
 return Template

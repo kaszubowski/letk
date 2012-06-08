@@ -1,6 +1,7 @@
 local Class = function( init, ... )
     local parents = type( init ) == 'function' and { ... } or { init, ... }
-    local c = {}
+    local c     = {}
+
     c.__index = function( t, k )
         if rawget( c, k ) then return rawget( c, k ) end
         for pk, p in ipairs( parents ) do
@@ -8,11 +9,13 @@ local Class = function( init, ... )
         end
         return nil
     end
+
     setmetatable(c, c)
 
     if type( init ) == 'function' then
         c.__super = init
     end
+    c.__parents = parents
 
     function c.new( ... )
         local self = {}

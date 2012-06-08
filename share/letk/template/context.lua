@@ -1,8 +1,6 @@
 local Context = {}
 Context.__index = Context
 
-setmetatable(Context, Object)
-
 
 function Context.new()
     local self = {}
@@ -19,6 +17,7 @@ function Context.new()
         select   = select,
         pairs    = pairs,
         ipairs   = ipairs,
+        type     = type,
     }
 
     return self

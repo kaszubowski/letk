@@ -1,5 +1,9 @@
 local function block_if( template, chunk )
-    local eval                 = loadstring( 'return ' .. chunk[ 1 ] )
+    local eval, err        = loadstring( 'return ' .. chunk[ 1 ] )
+    if not( eval ) then 
+        table.insert( template.erros, 'ERROR(if)' .. err )
+        return false
+    end
     local tlist, end_chunk = template:parse{ 'else', 'elseif', 'end', 'endif' }
 
     local flist
@@ -31,7 +35,11 @@ local function block_print( template, chunk )
         return
     end
 
-    local eval = loadstring( 'return ' .. chunk[ 1 ] )
+    local eval, err = loadstring( 'return ' .. chunk[ 1 ] )
+    if not( eval ) then 
+        table.insert( template.erros, 'ERROR(print)' .. err )
+        return false
+    end
 
     return function( )
         local res =  template.context:eval( eval )
@@ -44,7 +52,11 @@ local function block_var( template, chunk )
         return
     end
 
-    local eval = loadstring( 'return ' .. chunk.var )
+    local eval, err = loadstring( 'return ' .. chunk.var )
+    if not( eval ) then 
+        table.insert( template.erros, 'ERROR(var)' .. err )
+        return false
+    end
 
     return function( )
         local res =  template.context:eval( eval )
@@ -98,7 +110,11 @@ local function block_for( template, chunk )
         end
     end
 
-    local eval = loadstring( 'return ' .. explist )
+    local eval, err = loadstring( 'return ' .. explist )
+    if not( eval ) then 
+        table.insert( template.erros, 'ERROR(for)' .. err )
+        return false
+    end
 
     return function( )
         local for_ctx, result = {}, {}
@@ -173,7 +189,11 @@ local function block_cycle( template, chunk )
         return ''
     end )
 
-    local itens = loadstring( 'return ' .. explist )
+    local itens, err = loadstring( 'return ' .. explist )
+    if not( itens ) then 
+        table.insert( template.erros, 'ERROR(cycle)' .. err )
+        return false
+    end
 
     local iter
     local values
@@ -198,7 +218,12 @@ local function block_cycle( template, chunk )
 end
 
 local function block_if_changed( template, chunk )
-    local eval = loadstring( 'return ' .. chunk[ 1 ] )
+    local eval, err = loadstring( 'return ' .. chunk[ 1 ] )
+    if not( eval ) then 
+        table.insert( template.erros, 'ERROR(if_changed)' .. err )
+        return false
+    end
+    
     local tlist, end_chunk = template:parse{ 'else', 'end' }
     local flist
     if end_chunk.block == 'else' then
@@ -229,7 +254,11 @@ end
 
 local function block_extends( template, chunk )
     local block_file_name = chunk[ 1 ]
-    local fn_file_name    = loadstring( 'return ' .. block_file_name)
+    local fn_file_name, err    = loadstring( 'return ' .. block_file_name)
+    if not( fn_file_name ) then 
+        table.insert( template.erros, 'ERROR(extends)' .. err )
+        return false
+    end
 
     local list_ignored = template:parse()
 
@@ -253,7 +282,12 @@ local function block_include( template, chunk )
             eval = file .. ', {' .. with .. '}'
         end
     end
-    local f = loadstring( 'return ' .. eval )
+    local f, err = loadstring( 'return ' .. eval )
+    if not( f ) then 
+        table.insert( template.erros, 'ERROR(include)' .. err )
+        return false
+    end
+    
     return function( )
         local template_name, ctx = template.context:eval( f )
         local new_template = template.new( template_name )
@@ -268,7 +302,11 @@ local function block_include( template, chunk )
 end
 
 local function block_with( template, chunk )
-    local with = loadstring( 'return {' .. chunk[ 1 ] .. '}' )
+    local with, err = loadstring( 'return {' .. chunk[ 1 ] .. '}' )
+    if not( with ) then 
+        table.insert( template.erros, 'ERROR(with)' .. err )
+        return false
+    end
     local list = template:parse{ 'end', 'endwith' }
     return function(  )
         local ctx = template.context:eval( with )
@@ -280,7 +318,12 @@ local function block_with( template, chunk )
 end
 
 local function block_set( template, chunk )
-    local f = loadstring( chunk[ 1 ] )
+    local f, err = loadstring( chunk[ 1 ] )
+    if not( f ) then 
+        table.insert( template.erros, 'ERROR(set)' .. err )
+        return false
+    end
+    
     return function(  )
         template.context:update( f )
     end

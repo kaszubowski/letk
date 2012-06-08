@@ -1,3 +1,4 @@
+require 'letk.lua51to52'
 require 'letk.table'
 require 'letk.string'
 letk           = {}

@@ -261,4 +261,22 @@ function List:clear()
     self.tail  = nil
 end
 
+function List:swap( a, b )
+    if a > 0 and a<= self.itens and b > 0 and b <= self.itens and a ~= b then
+        local node_a, node_b
+        local cur_pos, node = 1, self.root
+        while not node_a and not node_b and node do
+            if cur_pos == a then node_a = node end
+            if cur_pos == b then node_b = node end
+            cur_pos = cur_pos + 1
+            node = node.next
+        end
+        if node_a and node_b then
+            local aux    = node_b.data
+            node_b.data  = node_a.data
+            node_a.data  = aux
+        end
+    end
+end
+
 return List

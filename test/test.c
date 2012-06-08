@@ -89,8 +89,8 @@
     This is the first {{ i }}
 {% last %}
     This is the last {{ i }}
-{% emply %}
-    It is emply
+{% empty %}
+    It is empty
 {% loop %}
     Back to loop {{ i }}
 {% end %}
