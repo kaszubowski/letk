@@ -1,5 +1,5 @@
 /*
- * gcc -pipe -shared -Wall `pkg-config --cflags --libs lua` linuxserial.c -o linuxserial.so
+ * gcc -pipe -shared -fpic -Wall `pkg-config --cflags --libs lua5.1` linuxserial.c -o linuxserial.so
  * 
  */
 
@@ -68,7 +68,7 @@ int LSwriteByte(lua_State *L){
     luaL_checktype(L, 2, LUA_TNUMBER);
     SerialFile *f   = (SerialFile *) lua_touserdata(L, 1);
     char buf[2];
-    sprintf( buf, "%c", lua_tointeger(L, 2) );
+    sprintf( buf, "%c", (int) lua_tointeger(L, 2) );
     write( f->filedesc, buf, strlen( buf ) );
     
     return 0;

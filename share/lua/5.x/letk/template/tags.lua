@@ -1,4 +1,4 @@
-local function block_if( template, chunk )
+local function tag_if( template, chunk )
     local eval, err        = loadstring( 'return ' .. chunk[ 1 ] )
     if not( eval ) then 
         table.insert( template.erros, 'ERROR(if)' .. err )
@@ -8,64 +8,63 @@ local function block_if( template, chunk )
 
     local flist
 
-    if end_chunk.block == 'else' then
+    if end_chunk.tag == 'else' then
         flist, end_chunk  = template:parse{ 'end', 'endif' }
     end
 
-    if end_chunk.block == 'elseif' then
-        flist, end_chunk = block_if( template, end_chunk )
+    if end_chunk.tag == 'elseif' then
+        flist, end_chunk = tag_if( template, end_chunk )
     end
 
-    return function()
+    return function( template, context )
         if template.context:eval( eval ) then
             return template:execute( tlist )
         else
             if type( flist ) == 'table' then
                 return template:execute( flist )
             elseif type( flist ) == 'function' then
-                return flist()
+                return flist( template, context )
             end
             return ''
         end
     end
 end
 
-local function block_print( template, chunk )
+local function tag_print( template, chunk )
     if not chunk[ 1 ] or chunk[ 1 ] == '' then
         return
     end
 
     local eval, err = loadstring( 'return ' .. chunk[ 1 ] )
     if not( eval ) then 
-        table.insert( template.erros, 'ERROR(print)' .. err )
+        table.insert( template.errors, 'Error tag_print: ' .. err )
         return false
     end
 
-    return function( )
+    return function( template, context )
         local res =  template.context:eval( eval )
         return res
     end
 end
 
-local function block_var( template, chunk )
+local function tag_var( template, chunk )
     if not chunk.var or chunk.var == '' then
         return
     end
 
     local eval, err = loadstring( 'return ' .. chunk.var )
     if not( eval ) then 
-        table.insert( template.erros, 'ERROR(var)' .. err )
+        table.insert( template.errors, 'Error tag_var: ' .. err )
         return false
     end
 
-    return function( )
+    return function( template, context )
         local res =  template.context:eval( eval )
         return res
     end
 end
 
-local function block_for( template, chunk )
-    --* blocks list *--
+local function tag_for( template, chunk )
     local lists      = {}
     local delimiters = { 'first', 'last', 'empty', 'loop', 'endfor', 'end', 'notlast', 'notfirst' }
 
@@ -82,9 +81,9 @@ local function block_for( template, chunk )
             list,
         }
 
-        last_end_chunk = end_chunk.block
+        last_end_chunk = end_chunk.tag
 
-        if end_chunk.block == 'end' or end_chunk.block == 'endfor' then
+        if end_chunk.tag == 'end' or end_chunk.tag == 'endfor' then
             break
         end
     end
@@ -112,11 +111,11 @@ local function block_for( template, chunk )
 
     local eval, err = loadstring( 'return ' .. explist )
     if not( eval ) then 
-        table.insert( template.erros, 'ERROR(for)' .. err )
+        table.insert( template.errors, 'Error tag_for: ' .. err )
         return false
     end
 
-    return function( )
+    return function( template, context )
         local for_ctx, result = {}, {}
         template.context:push( for_ctx, 'FOR' )
 
@@ -182,7 +181,7 @@ local function block_for( template, chunk )
     end
 end
 
-local function block_cycle( template, chunk )
+local function tag_cycle( template, chunk )
     local external_key
     local explist = string.gsub( chunk[ 1 ], '%s+as%s+([%w_]+)%s*$', function( t )
         external_key = t
@@ -191,19 +190,18 @@ local function block_cycle( template, chunk )
 
     local itens, err = loadstring( 'return ' .. explist )
     if not( itens ) then 
-        table.insert( template.erros, 'ERROR(cycle)' .. err )
+        table.insert( template.errors, 'Error tag_cycle: ' .. err )
         return false
     end
 
     local iter
-    local values
     return function( template, context )
-        if values == nil then
-            values = { context:eval( itens ) }
+        if iter == nil then
             iter = 0
         end
+        local values = context:teval( itens )
 
-        iter = ( iter % #values ) + 1
+        iter        = ( iter % #values ) + 1
         local value = values[ iter ]
 
         if external_key then
@@ -211,26 +209,28 @@ local function block_cycle( template, chunk )
             if for_ctx then
                 for_ctx[ external_key ] = value
             end
+        else
+            return value
         end
 
-        return value
+        return ''
     end
 end
 
-local function block_if_changed( template, chunk )
+local function tag_if_changed( template, chunk )
     local eval, err = loadstring( 'return ' .. chunk[ 1 ] )
     if not( eval ) then 
-        table.insert( template.erros, 'ERROR(if_changed)' .. err )
+        table.insert( template.errors, 'Error tag_if_changed: ' .. err )
         return false
     end
     
     local tlist, end_chunk = template:parse{ 'else', 'end' }
     local flist
-    if end_chunk.block == 'else' then
+    if end_chunk.tag == 'else' then
         flist = template:parse{ 'end' }
     end
     local last_value
-    return function()
+    return function( template, context )
         local new_value = template.context:eval( eval )
         if new_value ~= last_value then
             last_value = new_value
@@ -241,56 +241,67 @@ local function block_if_changed( template, chunk )
     end
 end
 
-local function block_block( template, chunk )
+local function tag_block( template, chunk )
     local name = string.match( chunk[ 1 ], '^%s*([%w_-]+)%s*$' )
     local list = template:parse{ 'end', 'endblock' }
 
     template.blocks[ name ] = list
 
-    return function( )
+    return function( template, context )
         return template:execute( template.blocks[ name ] )
     end
 end
 
-local function block_extends( template, chunk )
-    local block_file_name = chunk[ 1 ]
-    local fn_file_name, err    = loadstring( 'return ' .. block_file_name)
-    if not( fn_file_name ) then 
-        table.insert( template.erros, 'ERROR(extends)' .. err )
+local function tag_nl( template, chunk )
+    local param = string.match( chunk[ 1 ], '^%s*(%d+)%s*$' )
+    local n     = tonumber( param ) or 1
+
+    return function( template, context )
+        return string.rep('\n',n)
+    end
+end
+
+local function tag_extends( template, chunk )
+    local template_name         = chunk[ 1 ]
+    local fn_template_name, err = loadstring( 'return ' .. template_name)
+    if not( fn_template_name ) then 
+        table.insert( template.errors, 'Error tag_extends: ' .. err )
         return false
     end
 
-    local list_ignored = template:parse()
+    --At this point only what are in {% block %} will be used by the template.blocks
+    --~ local list_ignored = template:parse()
+    local list_ignored, end_chunk = template:parse{ 'end', 'endextends' }
 
-    return function( )
-        local template_name = template.context:eval( fn_file_name )
-        local new_template  = template.new( template_name )
+    return function( template, context )
+        local template_name = template.context:eval( fn_template_name )
+        local new_template  = template:sub_template( template_name )
         new_template:compile( template.context )
         local list          = new_template:parse()
         for k, blk in pairs( template.blocks ) do
             new_template.blocks[ k ] = blk
         end
-        return template:execute( list )
+        return new_template:execute( list )
     end
 end
 
-local function block_include( template, chunk )
-    local eval = chunk[1]
-    local file, with = eval:match( '^(.-)%s+with%s+(.+)%s*$' )
-    if file and with then
+local function tag_include( template, chunk )
+    local eval       = chunk[1]
+    local template_name, with = eval:match( '^(.-)%s+with%s+(.+)%s*$' )
+    if template_name and with then
         if with:match( '%S' ) then
-            eval = file .. ', {' .. with .. '}'
+            eval = template_name .. ', {' .. with .. '}'
         end
     end
     local f, err = loadstring( 'return ' .. eval )
     if not( f ) then 
-        table.insert( template.erros, 'ERROR(include)' .. err )
+        table.insert( template.errors, 'Error tag_include: ' .. err )
         return false
     end
     
-    return function( )
+    return function( template, context )
         local template_name, ctx = template.context:eval( f )
-        local new_template = template.new( template_name )
+        local new_template       = template:sub_template( template_name )
         if type( ctx ) ~= 'table' then
             ctx = {}
         end
@@ -301,14 +312,14 @@ local function block_include( template, chunk )
     end
 end
 
-local function block_with( template, chunk )
+local function tag_with( template, chunk )
     local with, err = loadstring( 'return {' .. chunk[ 1 ] .. '}' )
     if not( with ) then 
-        table.insert( template.erros, 'ERROR(with)' .. err )
+        table.insert( template.errors, 'Error tag_with: ' .. err )
         return false
     end
     local list = template:parse{ 'end', 'endwith' }
-    return function(  )
+    return function( template, context )
         local ctx = template.context:eval( with )
         template.context:push( ctx, 'WITH' )
         local result = template:execute( list )
@@ -317,29 +328,85 @@ local function block_with( template, chunk )
     end
 end
 
-local function block_set( template, chunk )
+local function tag_set( template, chunk )
     local f, err = loadstring( chunk[ 1 ] )
     if not( f ) then 
-        table.insert( template.erros, 'ERROR(set)' .. err )
+        table.insert( template.errors, 'Error tag_set: ' .. err )
         return false
     end
     
-    return function(  )
+    return function( template, context )
         template.context:update( f )
     end
 end
 
+--{% cache live=100,'name',UserID %} ... {% end cache %}
+local function tag_cache( template, chunk )
+    local eval, err        = loadstring( 'return {' .. chunk[ 1 ] .. '}' )
+    if not( eval ) then 
+        table.insert( template.errors, 'Error tag_cache: ' .. err )
+        return false
+    end
+    local tlist, end_chunk = template:parse{ 'end', 'endcache' }
+    
+    return function( template, context )
+        if not template._cache then
+            return template:execute( tlist )    
+        end
+        
+        local cache_info = template.context:eval( eval )
+        local data       = template._cache:get( template.file, unpack(cache_info) )
+        if not data then
+            data = template:execute( tlist )
+            template._cache:set( data, template.file, unpack(cache_info) )
+        end
+        if cache_info.live   then template._cache:live( cache_info.live, template.file, unpack(cache_info) ) end
+        
+        return data
+    end
+end
+
+local function tag_cache_keys( template, chunk )
+    local eval, err        = loadstring( 'return {' .. chunk[ 1 ] .. '}' )
+    if not( eval ) then 
+        table.insert( template.errors, 'Error tag_cache_keys: ' .. err )
+        return false
+    end
+    
+    return function( template, context )
+        if not template._cache then
+            return 'NOT CACHE AVAILABLE' 
+        end
+        
+        local cache_info = template.context:eval( eval )
+        return template._cache:keys( template.file, unpack(cache_info) )
+    end
+end
+
 return {
-    [ 'if' ]          = block_if,
-    [ 'elseif' ]      = block_if,
-    [ 'print' ]       = block_print,
-    [ 'var' ]         = block_var,
-    [ 'for' ]         = block_for,
-    [ 'cycle' ]       = block_cycle,
-    [ 'ifchanged' ]   = block_if_changed,
-    [ 'block' ]       = block_block,
-    [ 'extends' ]     = block_extends,
-    [ 'include' ]     = block_include,
-    [ 'with' ]        = block_with,
-    [ 'set' ]         = block_set,
+    [ 'if' ]          = tag_if,
+    --[ 'elseif' ]      = tag_if,
+    [ 'print' ]       = tag_print,
+    [ 'var' ]         = tag_var,
+    [ 'for' ]         = tag_for,
+    [ 'cycle' ]       = tag_cycle,
+    [ 'ifchanged' ]   = tag_if_changed,
+    [ 'block' ]       = tag_block,
+    [ 'extends' ]     = tag_extends,
+    [ 'include' ]     = tag_include,
+    [ 'with' ]        = tag_with,
+    [ 'set' ]         = tag_set,
+    [ 'nl' ]          = tag_nl,
+    --~ [ 'autoescape' ]    = tag_autoescape, --Set a context Var and works in the tag_var
+    --~ [ 'load' ]          = tag_load, --Load custom tags
+    [ 'cache' ]       = tag_cache,
+    [ 'cachekey' ]    = tag_cache_keys,
 }
+
+--[[
+ verbatin
+ debug
+ filter
+ firstof
+ spaceless
+--]]

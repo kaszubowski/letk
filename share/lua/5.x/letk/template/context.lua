@@ -87,13 +87,20 @@ function Context:get_env()
     return env
 end
 
-function Context:eval( f )
+function Context:teval( f )
     local old_env = getfenv( f )
     local env     = self:get_env()
     setfenv( f, env )
     local result  = { f() }
     setfenv( f, old_env )
+    return result
+end
+
+function Context:eval( f )
+    local result = self:teval( f )
     return unpack( result )
 end
+
+
 
 return Context

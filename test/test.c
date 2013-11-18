@@ -83,36 +83,44 @@
 [13] Minha Variável {{ num + 2 }} == 14
 
 //Teste 14
-{% for i=1,3,1 %}
+{% for i=1,10,2 %}
     Val {{i}}
 {% first %}
     This is the first {{ i }}
+{% notfirst %}
+    This is NOT the first {{ i }}
 {% last %}
     This is the last {{ i }}
 {% empty %}
-    It is empty
+    It is Empty: ERRO
+{% notlast %}
+    This is NOT the last {{ i }}
 {% loop %}
-    Back to loop {{ i }}
+    ENDING loop {{ i }} -------------------
 {% end %}
 
 //Teste 15
 {% for c,v in ipairs{'a','b','c','d'} %}
     {{ c }} = {{ v }}
 {% first %}
-    This is the first {{ tostring(c) .. '-' .. v }}
+    This is the first {{ c }} = {{ v }}
+{% notfirst %}
+    This is NOT the first {{ c }} = {{ v }}
 {% last %}
-    This is the last {{ v }}
+    This is the last {{ c }} = {{ v }}
 {% empty %}
     It is Empty: ERRO
+{% notlast %}
+    This is NOT the last {{ c }} = {{ v }}
 {% loop %}
-    Back to loop {{ v }}
+    ENDING loop {{ c }} = {{ v }} -------------------
 {% end %}
 
 //Teste 16
 {% for c,v in ipairs{} %}
     {{v}}
 {% empty %}
-    Empty
+    Empty: OK
 {% endfor %}
 
 //Teste 17
@@ -126,6 +134,8 @@
     It is Empty: ERRO
 {% loop %}
     Back to loop {{ v }}
+{% notlast %}
+    This is NOT the last {{ c }} = {{ v }}
 {% end %}
 
 //Teste 18
@@ -139,12 +149,17 @@
     {% end %}
 {% end %}
 
+//Teste 19 a
 {% for i=1,10 %}
-    {{i}}--{% cycle 'a','b',i as teste %},
-    --{{teste}}--
+    {{i}}{% cycle 'a','b',i as teste %}, cycle: {{teste}}
 {% end %}
 
-//Teste 19
+//Teste 19 b
+{% for i=1,10 %}
+    {{i}}--{% cycle 'a','b',i,2*i %}
+{% end %}
+
+//Teste 20
 {% for c,v in ipairs{'a','a','b','b','c'} %}
     {% ifchanged v %}
         --> {{ v }}
@@ -153,24 +168,24 @@
     {% end %}
 {% end %}
 
-//Teste 20
+//Teste 21
 {% include 'extend.c' %}
 
-//Teste 21
+//Teste 22
 {% with x = 33, z=42 %}
     {% for i=0,10 %}
         {{x * i}}--{{z+i}}
     {% end %}
 {% end %}
 
-//Teste 22
+//Teste 23
 {% with x = 12; y = { a = 13, b = 14 } %}
     {{x}}, {{ y.a }}, {{ y.b }}
     {% set x = 15; y.a = 16 %}
     {{x}}, {{ y.a }}, {{ y.b }}
 {% end %}
 
-//Teste 23
+//Teste 24
 {% with x = 12; y = { a = 13, b = 14 } %}
     {{x}}, {{ y.a }}, {{ y.b }}
     {% for i = 1,3 %}

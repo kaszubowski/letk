@@ -1,6 +1,6 @@
 local Class = function( init, ... )
     local parents = type( init ) == 'function' and { ... } or { init, ... }
-    local c     = {}
+    local c       = {}
 
     c.__index = function( t, k )
         if rawget( c, k ) then return rawget( c, k ) end

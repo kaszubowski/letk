@@ -14,3 +14,9 @@ Var: {{ variavel }}
 {% block b %}
     Este é o bloco 'b' do extend.c
 {% endblock %}
+
+Voce nao ve esse texto
+
+{% end %}
+
+Depois que termina o extends pode haver texto. Terminar o extends eh opcional

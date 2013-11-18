@@ -26,7 +26,7 @@ local Grammar = {
     ),
     Literal  = C( ( 1 - V'Tag' )^1 ),
     Comment  = P'{#' * ( 1 - P'#}' )^0 * P'#}',
-    BlockTag = P'{%' * SS * Cg (V'Ident', 'block' ) *
+    BlockTag = P'{%' * SS * Cg (V'Ident', 'tag' ) *
                        Sp * C( ( 1 - P'%}' ) ^ 0 ) *
                        SS * P'%}',
     ExprTag  = P'{{' * Cg( ( 1 - P'}}' )^0, 'var' ) * P'}}',
