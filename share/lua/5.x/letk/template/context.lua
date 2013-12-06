@@ -1,24 +1,25 @@
-local Context = {}
+local Context   = {}
 Context.__index = Context
 
-
-function Context.new()
+function Context.new( noBasePush )
     local self = {}
     setmetatable( self, Context )
 
     self.ctxs      = {}
     self.ctxs_type = {}
-    self:push{
-        table    = table,
-        string   = string,
-        math     = math,
-        tonumber = tonumber,
-        tostring = tostring,
-        select   = select,
-        pairs    = pairs,
-        ipairs   = ipairs,
-        type     = type,
-    }
+    if not noBasePush then
+        self:push{
+            table    = table.clone( table ),
+            string   = table.clone( string ),
+            math     = table.clone( math ),
+            tonumber = tonumber,
+            tostring = tostring,
+            select   = select,
+            pairs    = pairs,
+            ipairs   = ipairs,
+            type     = type,
+        }
+    end
 
     return self
 end

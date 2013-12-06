@@ -1,7 +1,6 @@
 local Grammar = require 'letk.template.grammar'
-local Tags    = require 'letk.template.tags'
 
-local Template = {}
+local Template   = {}
 Template.__index = Template
 
 function Template.new( name )
@@ -119,7 +118,7 @@ function Template:parse( fl )
         end
 
         if chunk.tag then
-            local tag = Tags[ chunk.tag ]
+            local tag = letk.TemplateTags[ chunk.tag ]
             if not tag then
                 print( "Erro, invalid tag:", chunk.tag, chunk[1] )
             else
