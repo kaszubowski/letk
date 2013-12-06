@@ -161,6 +161,22 @@ function table.append( dst, src, ... )
     return dst
 end
 
+--~ function table.prepend( dst, src, ... )
+    --~ local n    = #src
+    --~ local temp = {}
+    --~ for i, val in ipairs( dst ) do
+        --~ temp[i] = val
+    --~ end
+    --~ for i, val in ipairs( src ) do
+        --~ dst[i] = val
+    --~ end
+    --~ for i, val in ipairs( temp ) do
+        --~ dst[i+n] = val
+    --~ end
+    --~ if ... then return table.prepend( dst, ... ) end
+    --~ return dst
+--~ end
+
 function table.update( dst, src, ... )
     for key, value in pairs( src ) do
         dst[ key ] = value

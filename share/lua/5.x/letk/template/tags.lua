@@ -252,6 +252,18 @@ local function tag_block( template, chunk )
     end
 end
 
+local function tag_block_append( template, chunk )
+    local name = string.match( chunk[ 1 ], '^%s*([%w_-]+)%s*$' )
+    local list = template:parse{ 'end', 'endblock' }
+
+    list.__APPEND           = true
+    template.blocks[ name ] = list
+
+    return function( template, context )
+        return template:execute( template.blocks[ name ] )
+    end
+end
+
 local function tag_nl( template, chunk )
     local param = string.match( chunk[ 1 ], '^%s*(%d+)%s*$' )
     local n     = tonumber( param ) or 1
@@ -279,7 +291,12 @@ local function tag_extends( template, chunk )
         new_template:compile( template.context )
         local list          = new_template:parse()
         for k, blk in pairs( template.blocks ) do
-            new_template.blocks[ k ] = blk
+            if blk.__APPEND then
+                --The append will NOT copy the blk.__APPEND, which IS desired :)
+                new_template.blocks[ k ] = table.append( new_template.blocks[ k ] or {}, blk )
+            else
+                new_template.blocks[ k ] = blk
+            end
         end
         return new_template:execute( list )
     end
@@ -385,13 +402,13 @@ end
 
 return {
     [ 'if' ]          = tag_if,
-    --[ 'elseif' ]      = tag_if,
     [ 'print' ]       = tag_print,
     [ 'var' ]         = tag_var,
     [ 'for' ]         = tag_for,
     [ 'cycle' ]       = tag_cycle,
     [ 'ifchanged' ]   = tag_if_changed,
     [ 'block' ]       = tag_block,
+    [ 'blockappend' ] = tag_block_append,
     [ 'extends' ]     = tag_extends,
     [ 'include' ]     = tag_include,
     [ 'with' ]        = tag_with,
