@@ -31,19 +31,40 @@ function Template:sub_template( name )
     return new_template
 end
 
-function Template:__call( Context )
-    if not Context then return false, 'ERRO: no Context' end
+function Template:copy_blocks( src_template )
+    for k, blk in pairs( src_template.blocks ) do
+        if blk.__APPEND then
+            --The append will NOT copy the blk.__APPEND, which IS desired :)
+            self.blocks[ k ] = table.append( self.blocks[ k ] or {}, blk )
+        else
+            self.blocks[ k ] = blk
+        end
+    end
+end
 
+function Template:compile_parse()
     if not self.chunks then
-        local status = self:compile( Context )
+        local status = self:compile()
         if not status then
-            return false, table.concat( self.errors, '\n' )
+            return false, self:getErrors()
         end
     end
 
-    local list = self:parse()
+    return self:parse()
+end
 
-    return self:execute( list )
+function Template:__call( context )
+    local list = self:compile_parse()
+
+    if list then
+        return self:execute( list, context )
+    else
+        return self:getErrors()
+    end
+end
+
+function Template:getErrors()
+    return table.concat( self.errors, '\n' )
 end
 
 function Template:addPath( pathList )
@@ -63,6 +84,7 @@ function Template:getTemplateFile( name )
     if file then
         return file
     end
+    return false
 end 
 
 function Template:removeNewLine( value )
@@ -73,11 +95,12 @@ function Template:cache( cache )
     self._cache = cache
 end
 
-function Template:compile( Context )
+function Template:compile()
     local f = self:getTemplateFile( self.name )
-    if not f then self.errors[#self.errors + 1] = string.format('File "%s" not found',self.name) return false end
-
-    self.context  = Context
+    if not f then
+        self.errors[#self.errors + 1] = string.format('File "%s" not found in "%s"',self.name, table.concat( self.path, ', '))
+        return false
+    end
 
     local s       = f:read("*a")
 
@@ -133,7 +156,10 @@ function Template:parse( fl )
     return list
 end
 
-function Template:execute( list )
+function Template:execute( list, context )
+    if not list then return false, 'ERRO: no list' end
+    if not context then return false, 'ERRO: no Context' end
+
     local result = {}
     for i, item in ipairs( list ) do
         local t = type( item )
@@ -141,7 +167,7 @@ function Template:execute( list )
         if t == 'string' then
             val = item
         elseif t == 'function' then
-            val = item( self, self.context )
+            val = item( self, context )
         else
             print('ERRO template execution')
         end

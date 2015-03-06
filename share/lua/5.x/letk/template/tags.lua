@@ -17,11 +17,11 @@ local function tag_if( template, chunk )
     end
 
     return function( template, context )
-        if template.context:eval( eval ) then
-            return template:execute( tlist )
+        if context:eval( eval ) then
+            return template:execute( tlist, context )
         else
             if type( flist ) == 'table' then
-                return template:execute( flist )
+                return template:execute( flist, context )
             elseif type( flist ) == 'function' then
                 return flist( template, context )
             end
@@ -42,7 +42,7 @@ local function tag_print( template, chunk )
     end
 
     return function( template, context )
-        local res =  template.context:eval( eval )
+        local res =  context:eval( eval )
         return res
     end
 end
@@ -59,7 +59,7 @@ local function tag_var( template, chunk )
     end
 
     return function( template, context )
-        local res =  template.context:eval( eval )
+        local res =  context:eval( eval )
         return res
     end
 end
@@ -117,11 +117,11 @@ local function tag_for( template, chunk )
 
     return function( template, context )
         local for_ctx, result = {}, {}
-        template.context:push( for_ctx, 'FOR' )
+        context:push( for_ctx, 'FOR' )
 
         local run             = false
         if mode == 'numeric' then
-            local a,b,c = template.context:eval( eval )
+            local a,b,c = context:eval( eval )
             for i = a, b, c or 1 do
                 run = true
                 for_ctx[ arglist ] = i
@@ -133,12 +133,12 @@ local function tag_for( template, chunk )
                         ( i > ( b - (c or 1) )  and lst[1] == 'last'  ) or
                         ( i <= ( b - (c or 1) ) and lst[1] == 'notlast'  )
                     then
-                        result[#result +1] = template:execute( lst[2] )
+                        result[#result +1] = template:execute( lst[2], context )
                     end
                 end
             end
         elseif mode == 'generic' then
-            local iter, tbl, var  = template.context:eval( eval )
+            local iter, tbl, var  = context:eval( eval )
             local values = { iter( tbl, var ) }
             var = values[ 1 ]
             while var do
@@ -158,7 +158,7 @@ local function tag_for( template, chunk )
                         ( islast         and lst[1] == 'last'  ) or
                         ( not islast     and lst[1] == 'notlast'  )
                     then
-                        result[#result +1] = template:execute( lst[2] )
+                        result[#result +1] = template:execute( lst[2], context )
                     end
                 end
 
@@ -170,12 +170,12 @@ local function tag_for( template, chunk )
         if not run then
             for _, lst in ipairs( lists ) do
                 if lst[1] == 'empty' then
-                    result[#result +1] = template:execute( lst[2] )
+                    result[#result +1] = template:execute( lst[2], context )
                 end
             end
         end
 
-        template.context:pop()
+        context:pop()
 
         return table.concat( result )
     end
@@ -205,7 +205,7 @@ local function tag_cycle( template, chunk )
         local value = values[ iter ]
 
         if external_key then
-            local for_ctx = template.context:get_ctx('FOR')
+            local for_ctx = context:get_ctx('FOR')
             if for_ctx then
                 for_ctx[ external_key ] = value
             end
@@ -231,12 +231,12 @@ local function tag_if_changed( template, chunk )
     end
     local last_value
     return function( template, context )
-        local new_value = template.context:eval( eval )
+        local new_value = context:eval( eval )
         if new_value ~= last_value then
             last_value = new_value
-            return template:execute( tlist )
+            return template:execute( tlist, context )
         elseif flist then
-            return template:execute( flist )
+            return template:execute( flist, context )
         end
     end
 end
@@ -248,7 +248,7 @@ local function tag_block( template, chunk )
     template.blocks[ name ] = list
 
     return function( template, context )
-        return template:execute( template.blocks[ name ] )
+        return template:execute( template.blocks[ name ], context )
     end
 end
 
@@ -260,7 +260,7 @@ local function tag_block_append( template, chunk )
     template.blocks[ name ] = list
 
     return function( template, context )
-        return template:execute( template.blocks[ name ] )
+        return template:execute( template.blocks[ name ], context )
     end
 end
 
@@ -286,22 +286,26 @@ local function tag_extends( template, chunk )
     local list_ignored, end_chunk = template:parse{ 'end', 'endextends' }
 
     return function( template, context )
-        local template_name = template.context:eval( fn_template_name )
+        local template_name = context:eval( fn_template_name )
         local new_template  = template:sub_template( template_name )
-        new_template:compile( template.context )
-        local list          = new_template:parse()
-        for k, blk in pairs( template.blocks ) do
-            if blk.__APPEND then
-                --The append will NOT copy the blk.__APPEND, which IS desired :)
-                new_template.blocks[ k ] = table.append( new_template.blocks[ k ] or {}, blk )
-            else
-                new_template.blocks[ k ] = blk
-            end
+        local status        = new_template:compile()
+        if status then
+            local list = new_template:parse()
+            new_template:copy_blocks( template )
+            return new_template:execute( list, context )
         end
-        return new_template:execute( list )
+        return new_template:getErrors()
     end
 end
 
+
+--[[ From the Django documentation:
+  "The include tag should be considered as an implementation of “render this
+subtemplate and include the HTML”, not as “parse this subtemplate and include
+its contents as if it were part of the parent”. This means that there is no
+shared state between included templates – each include is a completely
+independent rendering process."
+--]]
 local function tag_include( template, chunk )
     local eval       = chunk[1]
     local template_name, with = eval:match( '^(.-)%s+with%s+(.+)%s*$' )
@@ -317,15 +321,35 @@ local function tag_include( template, chunk )
     end
     
     return function( template, context )
-        local template_name, ctx = template.context:eval( f )
+        local template_name, ctx = context:eval( f )
         local new_template       = template:sub_template( template_name )
         if type( ctx ) ~= 'table' then
             ctx = {}
         end
-        template.context:push( ctx )
-        local result = new_template( template.context )
-        template.context:pop()
+        context:push( ctx )
+        local result = new_template( context )
+        context:pop()
         return result
+    end
+end
+
+local function tag_importblocks( template, chunk )
+    local tmpl_eval       = chunk[1]
+    
+    local f, err = loadstring( 'return ' .. tmpl_eval )
+    if not f then 
+        table.insert( template.errors, 'Error tag_import_blocks: ' .. (err or '') )
+        return false
+    end
+
+    local template_name = f()
+    local new_template  = template:sub_template( template_name )
+
+    new_template:compile_parse()
+    template:copy_blocks( new_template )
+    
+    return function( template, context )
+        return ''
     end
 end
 
@@ -337,10 +361,10 @@ local function tag_with( template, chunk )
     end
     local list = template:parse{ 'end', 'endwith' }
     return function( template, context )
-        local ctx = template.context:eval( with )
-        template.context:push( ctx, 'WITH' )
-        local result = template:execute( list )
-        template.context:pop( )
+        local ctx = context:eval( with )
+        context:push( ctx, 'WITH' )
+        local result = template:execute( list, context )
+        context:pop( )
         return result
     end
 end
@@ -353,7 +377,7 @@ local function tag_set( template, chunk )
     end
     
     return function( template, context )
-        template.context:update( f )
+        context:update( f )
     end
 end
 
@@ -368,13 +392,13 @@ local function tag_cache( template, chunk )
     
     return function( template, context )
         if not template._cache then
-            return template:execute( tlist )    
+            return template:execute( tlist, context )    
         end
         
-        local cache_info = template.context:eval( eval )
+        local cache_info = context:eval( eval )
         local data       = template._cache:get( template.file, unpack(cache_info) )
         if not data then
-            data = template:execute( tlist )
+            data = template:execute( tlist, context )
             template._cache:set( data, template.file, unpack(cache_info) )
         end
         if cache_info.live   then template._cache:live( cache_info.live, template.file, unpack(cache_info) ) end
@@ -395,29 +419,30 @@ local function tag_cache_keys( template, chunk )
             return 'NOT CACHE AVAILABLE' 
         end
         
-        local cache_info = template.context:eval( eval )
+        local cache_info = context:eval( eval )
         return template._cache:keys( template.file, unpack(cache_info) )
     end
 end
 
 return {
-    [ 'if' ]          = tag_if,
-    [ 'print' ]       = tag_print,
-    [ 'var' ]         = tag_var,
-    [ 'for' ]         = tag_for,
-    [ 'cycle' ]       = tag_cycle,
-    [ 'ifchanged' ]   = tag_if_changed,
-    [ 'block' ]       = tag_block,
-    [ 'blockappend' ] = tag_block_append,
-    [ 'extends' ]     = tag_extends,
-    [ 'include' ]     = tag_include,
-    [ 'with' ]        = tag_with,
-    [ 'set' ]         = tag_set,
-    [ 'nl' ]          = tag_nl,
+    [ 'if' ]            = tag_if,
+    [ 'print' ]         = tag_print,
+    [ 'var' ]           = tag_var,
+    [ 'for' ]           = tag_for,
+    [ 'cycle' ]         = tag_cycle,
+    [ 'ifchanged' ]     = tag_if_changed,
+    [ 'block' ]         = tag_block,
+    [ 'blockappend' ]   = tag_block_append,
+    [ 'extends' ]       = tag_extends,
+    [ 'include' ]       = tag_include,
+    [ 'importblocks' ]  = tag_importblocks,
+    [ 'with' ]          = tag_with,
+    [ 'set' ]           = tag_set,
+    [ 'nl' ]            = tag_nl,
     --~ [ 'autoescape' ]    = tag_autoescape, --Set a context Var and works in the tag_var
     --~ [ 'load' ]          = tag_load, --Load custom tags
-    [ 'cache' ]       = tag_cache,
-    [ 'cachekey' ]    = tag_cache_keys,
+    [ 'cache' ]         = tag_cache,
+    [ 'cachekey' ]      = tag_cache_keys,
 }
 
 --[[

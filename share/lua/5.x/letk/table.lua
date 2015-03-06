@@ -51,25 +51,37 @@ function table.count( t )
     return i
 end
 
+function table.icount( t )
+    local i = 0
+    for _ in ipairs( t ) do
+        i = i + 1
+    end
+    return i
+end
+
 function table.complete( dst, src )
-    for k, v in pairs( src ) do
-        if dst[ k ] == nil then
-            dst[ k ] = v
+    if src then
+        for k, v in pairs( src ) do
+            if dst[ k ] == nil then
+                dst[ k ] = v
+            end
         end
     end
     return dst
 end
 
 function table.complete_deep( dst, src )
-    for k, v in pairs( src ) do
-        if dst[ k ] == nil then
-            if type( v ) == 'table' then
-                dst[ k ] = table.clone( v, true )
-            else
-                dst[ k ] = v
+    if src then
+        for k, v in pairs( src ) do
+            if dst[ k ] == nil then
+                if type( v ) == 'table' then
+                    dst[ k ] = table.clone( v, true )
+                else
+                    dst[ k ] = v
+                end
+            elseif type( dst[ k ] ) == 'table' and type( v ) == 'table' then
+                table.complete_deep( dst[ k ], v )
             end
-        elseif type( dst[ k ] ) == 'table' and type( v ) == 'table' then
-            table.complete_deep( dst[ k ], v )
         end
     end
     return dst
@@ -154,8 +166,10 @@ end
 
 function table.append( dst, src, ... )
     local n = #dst
-    for i, val in ipairs( src ) do
-        dst[ n + i ] = val
+    if src then
+        for i, val in ipairs( src ) do
+            dst[ n + i ] = val
+        end
     end
     if ... then return table.append( dst, ... ) end
     return dst
@@ -178,20 +192,34 @@ end
 --~ end
 
 function table.update( dst, src, ... )
-    for key, value in pairs( src ) do
-        dst[ key ] = value
+    if src then
+        for key, value in pairs( src ) do
+            dst[ key ] = value
+        end
     end
+    
     if ... then return table.update( dst, ... ) end
+    
     return dst
 end
 
-function table.update_deep( dst, src )
-    for key, value in pairs( src ) do
-        if type( value ) == 'table' then
-            dst[ key ] = type( dst[ key ] ) == 'table' and dst[ key ] or {}
-            table.update_deep( dst[ key ], value )
-        else
-            dst[ key ] = value
+function table.update_deep( dst, src, addNumberKey )
+    if src then
+        for key, value in pairs( src ) do
+            if addNumberKey and type( key ) == 'number' then
+                if type( value ) == 'table' then
+                    dst[ #dst + 1 ] = table.clone( value, true )
+                else
+                    dst[ #dst + 1 ] = value
+                end
+            else
+                if type( value ) == 'table' then
+                    dst[ key ] = type( dst[ key ] ) == 'table' and dst[ key ] or {}
+                    table.update_deep( dst[ key ], value )
+                else
+                    dst[ key ] = value
+                end
+            end
         end
     end
     return dst
@@ -294,6 +322,25 @@ function table.to_int_array( str )
         end
         return result
     end
+end
+
+function table.concatkv( tbl, sep1, sep2 )
+    local t = {}
+    for k,v in pairs( tbl ) do
+        table.insert(t, string.format( '%s%s%s', tostring(k), tostring( sep2 or ''), tostring(v) ) )
+    end
+    return table.concat( t, sep1 )
+end
+
+function table.sort_field( tbl, fld )
+    table.sort( tbl, function(a, b)
+        local aa = a[ fld ]
+        local bb = b[ fld ]
+        if aa == nil and bb == nil then return false end
+        if aa ~= nil and bb ~= nil then return aa < bb end
+        return bb == nil
+    end)
+    return tbl
 end
 
 

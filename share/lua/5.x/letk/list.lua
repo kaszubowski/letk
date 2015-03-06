@@ -56,6 +56,7 @@ function List:normalize_position( pos )
 end
 
 function List:add( data, pos )
+    pos = pos or 0 --default append
     local gpos, ipos = self:normalize_position( pos )
 
     local node = {
@@ -207,17 +208,47 @@ function List:prepend( data )
     return 1
 end
 
+--~ function List:ipairs()
+    --~ local node
+    --~ local iter = function( list, last_pos )
+        --~ local pos  = last_pos + 1
+        --~ if pos == 1 then
+            --~ node = self.root
+        --~ else
+            --~ node = node.next
+        --~ end
+        --~ if not node then return end
+        --~ return  pos, node.data
+    --~ end
+    --~ return iter, self, 0
+--~ end
 function List:ipairs()
-    local node
+    local node = self.root
     local iter = function( list, last_pos )
-        local pos  = last_pos + 1
-        if pos == 1 then
-            node = self.root
-        else
-            node = node.next
-        end
         if not node then return end
-        return  pos, node.data
+        local data = node.data
+        node       = node.next
+        return  last_pos + 1, data
+    end
+    return iter, self, 0
+end
+
+function List:ipairs_range( istart, iend )
+    local node = self.root
+    istart     = istart or 1
+    if iend then
+        iend = iend - istart + 1
+    end
+    local count = istart
+    while count > 1 and node do
+        node  = node.next
+        count = count - 1
+    end
+    local iter = function( list, last_pos )
+        if not node or (iend and last_pos >= iend ) then return end
+        local data = node.data
+        node       = node.next
+        return  last_pos + 1, data, last_pos + istart
     end
     return iter, self, 0
 end

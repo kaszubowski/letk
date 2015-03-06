@@ -117,15 +117,17 @@ end
     --~ return string.sub( utf8.gsub( ' ' .. s, '(%w)(%w+)', _capitalizeu8 ), 2 )
 --~ end
 
-function table.sort_field( tbl, fld )
-    table.sort( tbl, function(a, b)
-        local aa = a[ fld ]
-        local bb = b[ fld ]
-        if aa == nil and bb == nil then return false end
-        if aa ~= nil and bb ~= nil then return aa < bb end
-        return bb == nil
-    end)
-    return tbl
+function string.abbr( str, num_chars, append_str )
+    assert( type( str ) == 'string', "bad argument #1 to string.abbr (string expected, got " .. type( str ) .. ")" )
+    assert( type( num_chars ) == 'number', "bad argument #2 to string.abbr (number expected, got " .. type( num_chars ) .. ")" )
+    if append_str then
+        assert( type( append_str ) == 'string', "bad OPTIONAL argument #3 to string.abbr (string expected, got " .. type( append_str ) .. ")" )
+    end
+    if #str <= (num_chars) then
+        return str
+    else
+        return str:sub( 1, num_chars ) .. ( append_str or '' )
+    end
 end
 
 

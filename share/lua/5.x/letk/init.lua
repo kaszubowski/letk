@@ -1,6 +1,7 @@
 require 'letk.lua51to52'
 require 'letk.table'
 require 'letk.string'
+require 'letk.math'
 letk              = {}
 letk.Class        = require'letk.class'
 letk.List         = require'letk.list'
