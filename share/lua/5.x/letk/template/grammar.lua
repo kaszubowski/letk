@@ -15,6 +15,8 @@ local Cg = lpeg.Cg --Group Capture
 local SS = V'IGNORED'^0
 local Sp = V'IGNORED'^1
 
+--path^1 = path+, path^0 = path*, path^-1 = path?
+
 local Grammar = {
     "Start", -- initial
     Start    = Ct( ( V'Literal' + V'Tag' )^ 0 ),
@@ -29,7 +31,10 @@ local Grammar = {
     BlockTag = P'{%' * SS * Cg (V'Ident', 'tag' ) *
                        Sp * C( ( 1 - P'%}' ) ^ 0 ) *
                        SS * P'%}',
-    ExprTag  = P'{{' * Cg( ( 1 - P'}}' )^0, 'var' ) * P'}}',
+    --~ ExprTag  = P'{{' * Cg( ( 1 - P'}}' )^0, 'var' ) * P'}}',
+    --~ ExprTag  = P'{{' * Ct( Cg( ( 1 - P'}}' - V'Filter' )^0, 'var' ) * V'Filter'^-1 ) * P'}}',
+    ExprTag  = P'{{' * Cg( ( 1 - P'}}' - V'Filter' )^0, 'var' ) * V'Filter'^-1 * P'}}',
+    Filter   = P'|' * SS * Cg (V'Ident', 'filter' ) * SS,
     Ident    = R( 'az', 'AZ', '__' ) * R( 'az', 'AZ', '09', '__' ) ^ 0,
     IGNORED  = S' \t\r\n\f',
 }

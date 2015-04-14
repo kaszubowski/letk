@@ -194,3 +194,8 @@
     {% end %}
     {{x}}, {{ y.a }}, {{ y.b }}
 {% end %}
+
+//Teste 25
+[25] Minha Variável sem filtro {{ html_var }}
+[25] Minha Variável com filtro {{ html_var | html_escape }}
+[25] Minha Variável 2 com filtro {{ html_var2 | html_escape }}

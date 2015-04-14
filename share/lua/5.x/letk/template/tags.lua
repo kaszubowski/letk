@@ -1,3 +1,5 @@
+local Filters = require 'letk.template.filters'
+
 local function tag_if( template, chunk )
     local eval, err        = loadstring( 'return ' .. chunk[ 1 ] )
     if not( eval ) then 
@@ -60,6 +62,13 @@ local function tag_var( template, chunk )
 
     return function( template, context )
         local res =  context:eval( eval )
+        if res and chunk.filter then
+            if Filters[ chunk.filter ] then
+                res = Filters[ chunk.filter ]( res )
+            else
+                template:addError("Invalid filter '%s'", chunk.filter)
+            end
+        end
         return res
     end
 end

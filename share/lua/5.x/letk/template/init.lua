@@ -63,6 +63,10 @@ function Template:__call( context )
     end
 end
 
+function Template:addError( str )
+    self.errors[#self.errors + 1] = string.format( "ERROR [%s] :: %s", self.name or '<undefined>', str or '?' )
+end
+
 function Template:getErrors()
     return table.concat( self.errors, '\n' )
 end
@@ -98,7 +102,8 @@ end
 function Template:compile()
     local f = self:getTemplateFile( self.name )
     if not f then
-        self.errors[#self.errors + 1] = string.format('File "%s" not found in "%s"',self.name, table.concat( self.path, ', '))
+        --~ self.errors[#self.errors + 1] = string.format('File "%s" not found in "%s"',self.name, table.concat( self.path, ', '))
+        self:addError( string.format( 'File not found in "%s"', table.concat( self.path, ', ') ) )
         return false
     end
 
@@ -133,6 +138,9 @@ function Template:parse( fl )
         elseif chunk.var then
             chunk.tag='var'
         end
+
+        --DEBUG
+        --print('[CHUNK]', chunk.tag, chunk.filter, chunk[1] )
 
         self.chunk_id = self.chunk_id + 1
 
