@@ -5,6 +5,17 @@ function Context.new( noBasePush )
     local self = {}
     setmetatable( self, Context )
 
+    self.filter_MT = {
+        __index = function( t, k )
+            local t_MT = getmetatable( t )
+            for k_flt, flt in ipairs( t_MT ) do
+                if flt[k] then return flt[k] end
+            end
+        end,
+        require 'letk.template.filters',
+    }
+    local filter    =  setmetatable( {}, self.filter_MT )
+
     self.ctxs      = {}
     self.ctxs_type = {}
     if not noBasePush then
@@ -12,6 +23,7 @@ function Context.new( noBasePush )
             table    = table.clone( table ),
             string   = table.clone( string ),
             math     = table.clone( math ),
+            filter   = filter,
             tonumber = tonumber,
             tostring = tostring,
             select   = select,
@@ -22,6 +34,11 @@ function Context.new( noBasePush )
     end
 
     return self
+end
+
+function Context:add_filter( path )
+    local flt = require( path )
+    table.insert( self.filter_MT, flt )
 end
 
 function Context:push( t, name )

@@ -67,8 +67,11 @@ function string.capitalize( s )
 end
 
 local _htmltable = {
-    ["<"] = '&lt;';
-    ["&"] = '&amp;';
+    ['<'] = '&lt;',
+    ['>'] = '&gt;',
+    ["'"] = '&#39;',
+    ['"'] = '&quot;',
+    ['&'] = '&amp;',
 }
 local _htmlpattern = '[' .. table.concat( table.keys( _htmltable ) ) .. ']'
 function string.htmlencode( s )

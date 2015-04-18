@@ -159,12 +159,19 @@
     {{i}}--{% cycle 'a','b',i,2*i %}
 {% end %}
 
-//Teste 20
+//Teste 20 a
 {% for c,v in ipairs{'a','a','b','b','c'} %}
     {% ifchanged v %}
         --> {{ v }}
     {% else %}
         repeat: {{ v }}
+    {% end %}
+{% end %}
+
+//Teste 20 b
+{% for c,v in ipairs{'a','a','b','b','c'} %}
+    {% ifchanged v %}
+        --> {{ v }}
     {% end %}
 {% end %}
 
@@ -197,5 +204,34 @@
 
 //Teste 25
 [25] Minha Variável sem filtro {{ html_var }}
-[25] Minha Variável com filtro {{ html_var | html_escape }}
-[25] Minha Variável 2 com filtro {{ html_var2 | html_escape }}
+[25] Minha Variável com filtro {{ string.htmlencode( html_var ) }}
+[25] Minha Variável 2 com filtro {{ string.htmlencode( html_var2 ) }}
+
+An file with {{ filter.filesizeformat(1023) }} - 1023 B
+
+An file with {{ filter.filesizeformat(1024) }} - 1 KiB
+An file with {{ filter.filesizeformat(1025) }} - 1 KiB
+
+An file with {{ filter.filesizeformat(1048575) }} - 1 MiB
+An file with {{ filter.filesizeformat(1048576) }} - 1 MiB
+An file with {{ filter.filesizeformat(123456789) }} - 117.74 MiB
+
+An file with {{ filter.filesizeformat(1073741824) }} - 1 GiB
+An file with {{ filter.filesizeformat(1524713390) }} - 1.42 GiB
+
+//Teste 26
+This is the tag {% templatetag openblock %} templatetag {% templatetag closeblock %}
+Your can print a variable using {% templatetag openvariable %} var_name {% templatetag closevariable %} 
+Coments are made using {% templatetag opencomment %} comment {% templatetag closecomment %}
+Also {% templatetag openbrace %} and {% templatetag closebrace %} are available
+
+//Teste 27
+{% filter string.htmlencode( FILTER_STR ) %}
+    <html>
+        <head>Using block filter & badass</head>
+        <body>
+            This "is" an example 'of' block filter
+        </body>
+    </html>
+{% end %}
+

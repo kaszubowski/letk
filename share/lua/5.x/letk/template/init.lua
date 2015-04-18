@@ -117,7 +117,7 @@ end
 
 function Template:parse( fl )
     if type( fl ) == 'table' then
-        for c,v in ipairs( fl ) do
+        for k,v in ipairs( fl ) do
             fl[v] = true
         end
     end

@@ -1,5 +1,3 @@
-local Filters = require 'letk.template.filters'
-
 local function tag_if( template, chunk )
     local eval, err        = loadstring( 'return ' .. chunk[ 1 ] )
     if not( eval ) then 
@@ -62,13 +60,6 @@ local function tag_var( template, chunk )
 
     return function( template, context )
         local res =  context:eval( eval )
-        if res and chunk.filter then
-            if Filters[ chunk.filter ] then
-                res = Filters[ chunk.filter ]( res )
-            else
-                template:addError("Invalid filter '%s'", chunk.filter)
-            end
-        end
         return res
     end
 end
@@ -190,6 +181,7 @@ local function tag_for( template, chunk )
     end
 end
 
+--{% cycle 'a','b','c' as teste %}
 local function tag_cycle( template, chunk )
     local external_key
     local explist = string.gsub( chunk[ 1 ], '%s+as%s+([%w_]+)%s*$', function( t )
@@ -390,6 +382,47 @@ local function tag_set( template, chunk )
     end
 end
 
+local templatetags = {
+    ['openblock']     = '{%',
+    ['closeblock']    = '%}',
+    ['openvariable']  = '{{',
+    ['closevariable'] = '}}',
+    ['openbrace']     = '{',
+    ['closebrace']    = '}',
+    ['opencomment']   = '{#',
+    ['closecomment']  = '#}',
+}
+
+local function tag_templatetag( template, chunk )
+    local tagname = string.match( chunk[ 1 ], '^%s*(.-)%s*$' )
+    if not( templatetags[ tagname ] ) then 
+        table.insert( template.errors, 'Error tag_templatetag: tagname "' .. (tagname or '?') .. '" does not exist'  )
+        return false
+    end
+    
+    return function( template, context )
+        return templatetags[ tagname ]
+    end
+end
+
+local function tag_filter( template, chunk )
+    local tmpl_eval = chunk[1]
+    local f, err = loadstring( 'return ' .. tmpl_eval )
+    if not f then 
+        table.insert( template.errors, 'Error tag_filter: ' .. (err or '') )
+        return false
+    end
+    local list = template:parse{ 'end', 'endfilter' }
+    return function( template, context )
+        local ctx = {}
+        ctx.FILTER_STR = template:execute( list, context )
+        context:push( ctx, 'FILTER' )
+        local result = context:eval( f )
+        context:pop( )
+        return result
+    end
+end
+
 --{% cache live=100,'name',UserID %} ... {% end cache %}
 local function tag_cache( template, chunk )
     local eval, err        = loadstring( 'return {' .. chunk[ 1 ] .. '}' )
@@ -450,6 +483,9 @@ return {
     [ 'nl' ]            = tag_nl,
     --~ [ 'autoescape' ]    = tag_autoescape, --Set a context Var and works in the tag_var
     --~ [ 'load' ]          = tag_load, --Load custom tags
+    --~ [ 'csrf_token' ]    = tag_csrf_token,
+    [ 'filter' ]        = tag_filter,
+    ['templatetag']     = tag_templatetag,
     [ 'cache' ]         = tag_cache,
     [ 'cachekey' ]      = tag_cache_keys,
 }
@@ -457,7 +493,9 @@ return {
 --[[
  verbatin
  debug
- filter
  firstof
  spaceless
+ load (filters and tags)
+ now
+ regroup
 --]]
