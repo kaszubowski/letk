@@ -370,6 +370,21 @@ local function tag_with( template, chunk )
     end
 end
 
+local function tag_load_filter( template, chunk )
+    local filters, err = loadstring( 'return {' .. chunk[ 1 ] .. '}' )
+    if not( filters ) then 
+        table.insert( template.errors, 'Error tag_load_filter: ' .. err )
+        return false
+    end
+    return function( template, context )
+        local filter_names = context:eval( filters )
+        for k_flt_nm, flt_nm in ipairs( filter_names ) do
+            context:add_filter( flt_nm )
+        end
+        return ''
+    end
+end
+
 local function tag_set( template, chunk )
     local f, err = loadstring( chunk[ 1 ] )
     if not( f ) then 
@@ -420,6 +435,14 @@ local function tag_filter( template, chunk )
         local result = context:eval( f )
         context:pop( )
         return result
+    end
+end
+
+local function tag_spaceless( template, chunk )
+    local list = template:parse{ 'end', 'endspaceless' }
+    return function( template, context )
+        local result = template:execute( list, context )
+        return result:gsub('>[%s\t\n]+<','><')
     end
 end
 
@@ -482,10 +505,11 @@ return {
     [ 'set' ]           = tag_set,
     [ 'nl' ]            = tag_nl,
     --~ [ 'autoescape' ]    = tag_autoescape, --Set a context Var and works in the tag_var
-    --~ [ 'load' ]          = tag_load, --Load custom tags
+    [ 'load_filter' ]   = tag_load_filter,
     --~ [ 'csrf_token' ]    = tag_csrf_token,
     [ 'filter' ]        = tag_filter,
     ['templatetag']     = tag_templatetag,
+    ['spaceless']       = tag_spaceless,
     [ 'cache' ]         = tag_cache,
     [ 'cachekey' ]      = tag_cache_keys,
 }
@@ -498,4 +522,5 @@ return {
  load (filters and tags)
  now
  regroup
+ load_tags
 --]]

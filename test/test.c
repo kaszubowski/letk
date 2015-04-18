@@ -203,6 +203,12 @@
 {% end %}
 
 //Teste 25
+This is the tag {% templatetag openblock %} templatetag {% templatetag closeblock %}
+Your can print a variable using {% templatetag openvariable %} var_name {% templatetag closevariable %} 
+Coments are made using {% templatetag opencomment %} comment {% templatetag closecomment %}
+Also {% templatetag openbrace %} and {% templatetag closebrace %} are available
+
+//Teste 26
 [25] Minha Variável sem filtro {{ html_var }}
 [25] Minha Variável com filtro {{ string.htmlencode( html_var ) }}
 [25] Minha Variável 2 com filtro {{ string.htmlencode( html_var2 ) }}
@@ -219,19 +225,30 @@ An file with {{ filter.filesizeformat(123456789) }} - 117.74 MiB
 An file with {{ filter.filesizeformat(1073741824) }} - 1 GiB
 An file with {{ filter.filesizeformat(1524713390) }} - 1.42 GiB
 
-//Teste 26
-This is the tag {% templatetag openblock %} templatetag {% templatetag closeblock %}
-Your can print a variable using {% templatetag openvariable %} var_name {% templatetag closevariable %} 
-Coments are made using {% templatetag opencomment %} comment {% templatetag closecomment %}
-Also {% templatetag openbrace %} and {% templatetag closebrace %} are available
+{% filter filter.clear_empty_lines( FILTER_STR ) %}
 
-//Teste 27
-{% filter string.htmlencode( FILTER_STR ) %}
-    <html>
-        <head>Using block filter & badass</head>
-        <body>
-            This "is" an example 'of' block filter
-        </body>
-    </html>
+    //Teste 27
+    {% filter string.htmlencode( FILTER_STR ) %}
+        <html>
+            <head>Using block filter & badass</head>
+            <body>
+                This "is" an example 'of' block filter
+            </body>
+        </html>
+    {% end %}
+
+    //Teste 28
+    {% load_filter 'filter_test' %}
+
+    {{ filter.test( 'bla' ) }}
+
+{% endfilter %}
+
+//Test 29
+{% spaceless %}
+    <p> 
+        <a href="foo/">Bar</a>
+        <a href="foo/">Bar</a>
+    </p>
 {% end %}
 

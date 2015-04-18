@@ -34,4 +34,8 @@ function filter.filesizeformat( num, decimal, bits, precision )
     
 end
 
+function filter.clear_empty_lines( str )
+    return str:gsub('\n[%s\t]*\n','\n')
+end
+
 return filter
