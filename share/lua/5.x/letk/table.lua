@@ -18,30 +18,29 @@ function table.values( t )
     return r
 end
 
-local function spairs_iter( s, id )
-    id = id + 1
-    local k = s[ index ]
-    return k, s.__src[ k ]
-end
+--------------------------------------------------------------------------------
 
-function spairs( src )
-    local t = table.keys( src )
-    table.sort( t )
-    t.__src = src
-    return spairs_iter, t, 0
-end
-
-local function iipairs_iter( src, i )
-    i       = i - 1
-    local v = src[i]
-    if v then
-        return i, v
+local function spairs_iter( t, key )
+    local id = 1
+    if key then
+        id = t.__ord[ key ] + 1
     end
+    local k = t.__keys[ id ]
+    return k, t.__src[ k ]
 end
 
-function iipairs( src )
-    return iipairs_iter, src, #src+1
+--Sorted pairs
+function spairs( src )
+    local t = {}
+    t.__src  = src
+    t.__keys = table.keys( src )
+    table.sort( t.__keys  )
+    t.__ord = table.transpose( t.__keys  )
+    
+    return spairs_iter, t, nil
 end
+
+--------------------------------------------------------------------------------
 
 function table.count( t )
     local i = 0
@@ -104,6 +103,31 @@ function table.transpose( t, value )
     return r
 end
 
+--transpose only integers, copy others
+function table.itranspose( t, value )
+    local r    = {}
+    local used = {}
+
+    --transpose integers
+    for k, v in ipairs( t ) do
+        if value ~=  nil then
+            r[ v ] = value
+        else
+            r[ v ] = k
+        end
+        used[ k ] = true
+    end
+
+    --keep others
+    for k, v in pairs( t ) do
+        if not used[ k ] then
+            r[ k ] = v
+        end
+    end
+
+    return r
+end
+
 function table.iproject( t, key, dst_key )
     local result = {}
     if dst_key then
@@ -130,13 +154,18 @@ function table.makeset( t )
     return table.transpose( t, true )
 end
 
+function table.makeiset( t )
+    return table.itranspose( t, true )
+end
+
 function table.clone( t, deep )
     local r = {}
     for k, v in pairs( t ) do
-        if deep and type( v ) == 'table'
-            then r[ k ] = table.clone( v, true )
-            else r[ k ] = v
-            end
+        if deep and type( v ) == 'table' then
+            r[ k ] = table.clone( v, true )
+        else
+            r[ k ] = v
+        end
     end
     return r
 end
@@ -330,6 +359,14 @@ function table.concatkv( tbl, sep1, sep2 )
         table.insert(t, string.format( '%s%s%s', tostring(k), tostring( sep2 or ''), tostring(v) ) )
     end
     return table.concat( t, sep1 )
+end
+
+function table.tostringconcat( tbl, sep, i, j )
+    local t = {}
+    for k,v in ipairs( tbl ) do
+        t[k] = tostring( v )
+    end
+    return table.concat( t, sep, i, j  )
 end
 
 function table.sort_field( tbl, fld )

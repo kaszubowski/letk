@@ -442,7 +442,15 @@ local function tag_spaceless( template, chunk )
     local list = template:parse{ 'end', 'endspaceless' }
     return function( template, context )
         local result = template:execute( list, context )
-        return result:gsub('>[%s\t\n]+<','><')
+        return result:gsub('>[%s\t\r\n]+<','><')
+    end
+end
+
+local function tag_no_blank_line( template, chunk )
+    local list = template:parse{ 'end', 'endnoblankline' }
+    return function( template, context )
+        local result = template:execute( list, context )
+        return result:gsub('^[%s%t]*[\r\n]+','')
     end
 end
 
@@ -510,6 +518,7 @@ return {
     [ 'filter' ]        = tag_filter,
     ['templatetag']     = tag_templatetag,
     ['spaceless']       = tag_spaceless,
+    ['noblankline']       = tag_no_blank_line,
     [ 'cache' ]         = tag_cache,
     [ 'cachekey' ]      = tag_cache_keys,
 }

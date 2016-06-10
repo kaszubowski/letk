@@ -12,7 +12,7 @@ function Template.new( name )
     self.blocks          = {}
     self.errors          = {}
     self.path            = {}
-    self.remove_new_line = false
+    self.remove_blank_lines = false
     self._cache          = nil
     self._escape         = nil -- function that escape context vars
     self.autoescape      = false -- by default does not escape
@@ -23,10 +23,10 @@ end
 function Template:sub_template( name )
     local new_template = Template.new( name )
     
-    new_template.errors            = self.errors
-    new_template._cache            = self._cache
-    new_template.path              = table.clone( self.path )
-    new_template.remove_new_line   = self.remove_new_line
+    new_template.errors             = self.errors
+    new_template._cache             = self._cache
+    new_template.path               = table.clone( self.path )
+    new_template.remove_blank_lines = self.remove_blank_lines
     
     return new_template
 end
@@ -91,8 +91,8 @@ function Template:getTemplateFile( name )
     return false
 end 
 
-function Template:removeNewLine( value )
-    new_template.remove_new_line = value
+function Template:setRemoveBlankLines( value )
+    self.remove_blank_lines = value
 end
 
 function Template:cache( cache )
@@ -130,8 +130,8 @@ function Template:parse( fl )
         if type( chunk ) == 'string' then
             --~ chunk = chunk:gsub( '^\n', '' )
             --~ chunk = chunk:gsub('[ \t\r]*\n[ \t\r]*', '\n'):gsub('\n+', '\n'):gsub('^\n', '')
-            if self.remove_new_line then
-                chunk = chunk:gsub( '[\n\r]*', '' )
+            if self.remove_blank_lines then
+                --~ chunk = chunk:gsub( '^%s*[\n\r]*', '' )
             end
             chunk = { tag='print', [1] = string.format( '%q', chunk ) }
             self.chunks[ self.chunk_id ] = chunk
